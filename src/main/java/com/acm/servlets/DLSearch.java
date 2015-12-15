@@ -2,6 +2,7 @@ package com.acm.servlets;
 
 import java.io.IOException;
 
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
@@ -25,12 +26,14 @@ import org.elasticsearch.search.sort.SortOrder;
 @WebServlet("/search")
 public class DLSearch extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-       
+    
+	
     /**
      * @see HttpServlet#HttpServlet()
      */
     public DLSearch() {
         super();
+        
         // TODO Auto-generated constructor stub
     }
 
@@ -38,14 +41,13 @@ public class DLSearch extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
 		//Staging box
-		String url = "172.16.20.138";
-//		""acmdl
+		//put this inside of a config.properties
+		/*
+		 * 
+		 */
 		String index = "acm_20151204";
-		
-		Client client = new TransportClient()
-						.addTransportAddress(new InetSocketTransportAddress(url,9300));
+		/* ***************************** */
 		String [] fields = {
 			"acmdlTitle^3",
 			"acmdlAuthorName^4",
@@ -95,7 +97,7 @@ public class DLSearch extends HttpServlet {
 		QueryBuilder qb = QueryBuilders.filteredQuery(innerQuery, filterQuery);
 		
 		int cnt = 1;
-		
+		Client client = (Client)this.getServletContext().getAttribute("elasticClient");
 		SearchRequestBuilder reqBuilder = client.prepareSearch(index);
 		
 		reqBuilder.setTypes("article");
@@ -121,4 +123,12 @@ public class DLSearch extends HttpServlet {
 		// TODO Auto-generated method stub
 	}
 
+//	@Override
+//	public void init(){
+//		String url = "172.16.20.138";
+//		Client client = new TransportClient()
+//		.addTransportAddress(new InetSocketTransportAddress(url,9300));
+//		this.getServletContext().setAttribute("elasticClient", client);
+//	}
+	
 }
