@@ -14,6 +14,7 @@ import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.index.query.AndFilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
@@ -92,9 +93,14 @@ public class DLSearch extends HttpServlet {
 		String query = "java";
 		
 		QueryBuilder innerQuery = QueryBuilders.multiMatchQuery(query, fields);
-		TermFilterBuilder filterQuery = FilterBuilders.termFilter("owners.owner", "ACM");
+		//TermFilterBuilder filterQuery = FilterBuilders.termFilter("owners.owner", "ACM");
+		
+		AndFilterBuilder filterQuery = FilterBuilders.andFilter(FilterBuilders.termFilter("owners,owener", "GUIDE"),
+				FilterBuilders.termFilter("owners.owner", "ACM"));
 		
 		QueryBuilder qb = QueryBuilders.filteredQuery(innerQuery, filterQuery);
+		
+		
 		
 		int cnt = 1;
 		Client client = (Client)this.getServletContext().getAttribute("elasticClient");
