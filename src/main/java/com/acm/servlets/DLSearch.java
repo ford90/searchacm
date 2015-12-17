@@ -1,10 +1,11 @@
 package com.acm.servlets;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -21,8 +22,11 @@ import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.index.query.QueryStringQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
+
+import com.acm.ReadProperties;
 
 
 
@@ -33,14 +37,14 @@ import org.elasticsearch.search.sort.SortOrder;
 public class DLSearch extends HttpServlet {
 	private static final long serialVersionUID = 1L;
     
-//	private ReadProperties props;
+	private ReadProperties props;
 	
     /**
      * @see HttpServlet#HttpServlet()
      */
     public DLSearch() {
         super();
-//        this.props = ReadProperties.getInstance();
+        this.props = ReadProperties.getInstance();
         
         // TODO Auto-generated constructor stub
     }
@@ -49,11 +53,7 @@ public class DLSearch extends HttpServlet {
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		//Staging box
-		//put this inside of a config.properties
-		/*
-		 * 
-		 */
+/* ********* GET PARAMETERS ******* */
 		String query = request.getParameter("q");
 		int size;
 		try{
@@ -67,95 +67,24 @@ public class DLSearch extends HttpServlet {
 		} catch(Exception e){
 			from = 0;
 		}
-		
-		
-		String index = "acm_20151204";
-		/* ***************************** */
-	/* */
-		String [] fields = {
-			"acmdlTitle^3",
-			"acmdlAuthorName^4",
-			"acmdlAuthorNameSyn^2",
-            "acmdlOtherRolePersonName",
-            "recordAbstract^2",
-            "keywords.*.keyword^2",
-            "_all",
-            "recordID",
-            "isbnissn.isbnissn",
-            "allDOIs.doi",
-            "acmdlPublicationTitle.syn",
-            "acmdlSponsor",
-            "acmdlCCS"
-		};
-	
-/* */
-		String[] includes = {  
-			"title", 
-			"recordID",
-			"recordAbstract",
-			"ftFormats",
-			"publicationDate",
-			"publicationTitle",
-			"publisherID",
-			"publisherName",
-			"bibliometric.*",
-			"keywords.*",
-			"exportFormats.*",
-			"owners.owner",
-			"parents.publicationTitle",
-			"parents.publisherName",
-			"parents.publisherID",
-			"parents.recordID",
-			"parents.title",
-			"parents.publicationDate",                              
-			"persons.authors.personName",
-			"persons.authors.sequence",
-			"persons.authors.profileID"                                                                              
-		};		
 
-
-//		String query = "Moshe Vardi";
+		String owner = request.getParameter("owner");
+		String fullText = request.getParameter("fulltext");
 		
-		QueryBuilder qsb = QueryBuilders
-				.queryStringQuery(query)
-				.field("acmdlTitle^3")
-				.field("acmdlAuthorName^4" )
-				.field("acmdlAuthorNameSyn^2")
-				.field("acmdlOtherRolePersonName")
-				.field("recordAbstract^2" )
-				.field("keywords.*.keyword^2" )
-				.field("_all")
-				.field("recordID")
-				.field("isbnissn.isbnissn")
-				.field("allDOIs.doi")
-				.field("acmdlPublicationTitle.syn")
-				.field("acmdlSponsor")
-				.field("acmdlCCS");
-
-//		QueryStringQueryBuilder qsb = QueryBuilders.queryStringQuery("");
+		String filter = request.getParameter("filter");
 		
-		/*
-		String fieldStr = props.getProperty("fields");
+/* ********************* */
 		
 		String includeStr = props.getProperty("includes");
-		
+		String fieldStr = props.getProperty("fields");
 
-		
-		StringTokenizer includeTokenizer = new StringTokenizer(includeStr, ",");
-		String[] includes = new String[includeTokenizer.countTokens()];
-		
-		int cnt = 0;
-		while(includeTokenizer.hasMoreTokens()){
-			includes[cnt] = includeTokenizer.nextToken();
-			cnt++;
+		QueryStringQueryBuilder queryString = QueryBuilders.queryStringQuery(query);
+
+		for(String field : fieldStr.split(",")){
+			queryString.field(field);
 		}
-		*/
-		String owner = request.getParameter("owner");
 
-		
-		
 		Map<String, String> filters = new HashMap<String, String>();
-		
 
 		if(owner != null ) {
 			filters.put("owners.owner", "ACM");
@@ -164,25 +93,27 @@ public class DLSearch extends HttpServlet {
 			// Default Behavior
 			filters.put("owners.owner", "GUIDE");
 		}
-		
-		String personName = request.getParameter("personName");
-		
-		if( personName != null){
-			filters.put("acmdlPersonsSearchDspName", personName);
-		}
-		
-		String fullText = request.getParameter("fulltext");
+
 		if( fullText != null){
 			filters.put("fulltext", "ftFormats");
 		}
-		
-		
-		
-		BoolFilterBuilder bfq = FilterBuilders.boolFilter();
-//		  .must(FilterBuilders.termFilter("owners.owner", "ACM"),
-//				  FilterBuilders.termFilter("acmdlPersonsSearchDspName", "Binder, Walter"));
-		
+
+		if(filter != null) {
+			
+			StringTokenizer filterTokenizer = new StringTokenizer(filter, "|");
+			while(filterTokenizer.hasMoreTokens()){
+				String filterStr = filterTokenizer.nextToken();
+				String term 	 = filter.substring(0, filterStr.indexOf(':'));
+				String value 	 = filter.substring(filterStr.indexOf("(")+1,filter.indexOf(")"));
+
+				filters.put(term, value);
+			}
+		}
+
+		BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
+
 		FilterBuilder[] filterArray = new FilterBuilder[filters.size()];
+
 		int cnt = 0;
 		for(Map.Entry<String, String> entry : filters.entrySet()){
 			String key = entry.getKey();
@@ -194,75 +125,45 @@ public class DLSearch extends HttpServlet {
 			}
 			filterArray[cnt] = fb;
 			cnt++;
-
 		}
-		bfq.must(filterArray);
-//		System.out.println(fieldStr);
-//		QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(q, fields);
-//		QueryBuilder qb2 = QueryBuilders.boolQuery()
-//				.should(queryBuilder);
-		
-		QueryBuilder qb = QueryBuilders.filteredQuery(
-								qsb,
-								bfq);
-		
+		boolFilter.must(filterArray);
 
-		
-//		StringTokenizer fieldTokenizer = new StringTokenizer(fieldStr, ",");
-		
-//		while(fieldTokenizer.hasMoreTokens()){
-//			String field = fieldTokenizer.nextToken();
-//			qsb.field(field);
-//		}
+		// Complete Query
+		QueryBuilder qb = QueryBuilders.filteredQuery( queryString, boolFilter);
 
-//		QueryBuilder innerQuery = QueryBuilders.multiMatchQuery(query, fields);
-		//TermFilterBuilder filterQuery = FilterBuilders.termFilter("owners.owner", "ACM");
-		
-//		AndFilterBuilder filterQuery = FilterBuilders.andFilter(FilterBuilders.termFilter("owners,owener", "GUIDE"),
-//				FilterBuilders.termFilter("owners.owner", "ACM"));
-		
-//		QueryBuilder qb = QueryBuilders.filteredQuery(innerQuery, filterQuery);
-		
-		
-		
 		Client client = (Client)this.getServletContext().getAttribute("elasticClient");
-		SearchRequestBuilder reqBuilder = client.prepareSearch();
-		
+
+		SearchRequestBuilder reqBuilder = client.prepareSearch(props.getProperty("index"));
+
 		reqBuilder.setTypes("article");
 		reqBuilder.setSearchType(SearchType.DFS_QUERY_AND_FETCH);
 		reqBuilder.setQuery(qb);
-		reqBuilder.setFetchSource(includes, null);
+		reqBuilder.setFetchSource(includeStr.split(","), null);
 		reqBuilder.addSort("_score", SortOrder.DESC);
 		reqBuilder.setSize(20);
-		reqBuilder.setFrom(0);
-		
-
-		System.out.println( reqBuilder.toString() );
+		reqBuilder.setFrom(0);		
 
 		/*    
 		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
 
-
-				
 		ArrayList<String> recordID_l = new ArrayList<String>();
-		
+
 		for( SearchHit hit : elasticResponse.getHits().getHits() ){
 //			Map<String,Object> source = hit.getSource();
 			recordID_l.add(hit.getId());
 			
 		}
-		
-		OutputStream out = response.getOutputStream();
-		
+
 		for(String recordID : recordID_l){
 			out.write(recordID.getBytes());
 			out.write("\n".getBytes());
 			
 		}
 		*/
-		OutputStream out = response.getOutputStream();
-		out.write("Hello".getBytes());
-		out.flush();
+		response.getWriter().print(reqBuilder.toString());
+		response.getWriter().flush();
+		
+//		SearchHit[] hits = elasticSearchResults(query, size, from, owner, filter, fullText );
 		
 //		client.close();
 
@@ -283,91 +184,80 @@ public class DLSearch extends HttpServlet {
 //		this.getServletContext().setAttribute("elasticClient", client);
 //	}
 	
-	private SearchHit[] elasticSearchResults(String query, int size, int from ){
-		
-//		Old way of doing it, now use properties file to loop through and add field
-//		
-		
-		
-//		ACMQueryBuilder
-		
-		QueryBuilder qsb = QueryBuilders
-				.queryStringQuery(query)
-				.field("acmdlTitle^3")
-				.field("acmdlAuthorName^4" )
-				.field("acmdlAuthorNameSyn^2")
-				.field("acmdlOtherRolePersonName")
-				.field("recordAbstract^2" )
-				.field("keywords.*.keyword^2" )
-				.field("_all")
-				.field("recordID")
-				.field("isbnissn.isbnissn")
-				.field("allDOIs.doi")
-				.field("acmdlPublicationTitle.syn")
-				.field("acmdlSponsor")
-				.field("acmdlCCS");
+	private SearchHit[] elasticSearchResults(String query, int size, int from, String owner, String filter, String fullText ){
 
-//		QueryStringQueryBuilder qsb = QueryBuilders.queryStringQuery("");
-		
-		/*
-		String fieldStr = props.getProperty("fields");
-		
 		String includeStr = props.getProperty("includes");
+		String fieldStr = props.getProperty("fields");
+
+		QueryStringQueryBuilder queryString = QueryBuilders.queryStringQuery(query);
+
+		for(String field : fieldStr.split(",")){
+			queryString.field(field);
+		}
 		
 
-		
-		StringTokenizer includeTokenizer = new StringTokenizer(includeStr, ",");
-		String[] includes = new String[includeTokenizer.countTokens()];
-		
+
+		Map<String, String> filters = new HashMap<String, String>();
+
+		if(owner != null ) {
+			filters.put("owners.owner", "ACM");
+		}
+		else {
+			// Default Behavior
+			filters.put("owners.owner", "GUIDE");
+		}
+
+		if( fullText != null){
+			filters.put("fulltext", "ftFormats");
+		}
+
+		if(filter != null) {
+			
+			StringTokenizer filterTokenizer = new StringTokenizer(filter, "|");
+			while(filterTokenizer.hasMoreTokens()){
+				String filterStr = filterTokenizer.nextToken();
+				String term 	 = filter.substring(0, filterStr.indexOf(':'));
+				String value 	 = filter.substring(filterStr.indexOf("(")+1,filter.indexOf(")"));
+
+				filters.put(term, value);
+			}
+		}
+
+		BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
+
+		FilterBuilder[] filterArray = new FilterBuilder[filters.size()];
+
 		int cnt = 0;
-		while(includeTokenizer.hasMoreTokens()){
-			includes[cnt] = includeTokenizer.nextToken();
+		for(Map.Entry<String, String> entry : filters.entrySet()){
+			String key = entry.getKey();
+			FilterBuilder fb = null;
+			if(key == "fulltext"){
+				 fb = FilterBuilders.existsFilter(entry.getValue());
+			} else{
+				fb = FilterBuilders.termFilter(key, entry.getValue());
+			}
+			filterArray[cnt] = fb;
 			cnt++;
 		}
-		*/
-//		System.out.println(fieldStr);
-//		QueryBuilder queryBuilder = QueryBuilders.multiMatchQuery(q, fields);
-//		QueryBuilder qb2 = QueryBuilders.boolQuery()
-//				.should(queryBuilder);
-		
-		QueryBuilder qb = QueryBuilders.filteredQuery(
-								qsb,
-								FilterBuilders.termFilter("owners.owner", "ACM"));
-		
-//		StringTokenizer fieldTokenizer = new StringTokenizer(fieldStr, ",");
-		
-//		while(fieldTokenizer.hasMoreTokens()){
-//			String field = fieldTokenizer.nextToken();
-//			qsb.field(field);
-//		}
+		boolFilter.must(filterArray);
 
-//		QueryBuilder innerQuery = QueryBuilders.multiMatchQuery(query, fields);
-		//TermFilterBuilder filterQuery = FilterBuilders.termFilter("owners.owner", "ACM");
-		
-//		AndFilterBuilder filterQuery = FilterBuilders.andFilter(FilterBuilders.termFilter("owners,owener", "GUIDE"),
-//				FilterBuilders.termFilter("owners.owner", "ACM"));
-		
-//		QueryBuilder qb = QueryBuilders.filteredQuery(innerQuery, filterQuery);
-		
-		
-		
+		// Complete Query
+		QueryBuilder qb = QueryBuilders.filteredQuery( queryString, boolFilter);
+
 		Client client = (Client)this.getServletContext().getAttribute("elasticClient");
-		SearchRequestBuilder reqBuilder = client.prepareSearch();
-		
+
+		SearchRequestBuilder reqBuilder = client.prepareSearch(props.getProperty("index"));
+
 		reqBuilder.setTypes("article");
 		reqBuilder.setSearchType(SearchType.DFS_QUERY_AND_FETCH);
 		reqBuilder.setQuery(qb);
-//		reqBuilder.setFetchSource(includes, null);
+		reqBuilder.setFetchSource(includeStr.split(","), null);
 		reqBuilder.addSort("_score", SortOrder.DESC);
 		reqBuilder.setSize(20);
-		reqBuilder.setFrom(0);
-		
-
-		System.out.println( reqBuilder.toString() );
-
-		/* */   
+		reqBuilder.setFrom(0);		
+		    
 		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
-
+		 
 		
 		return elasticResponse.getHits().getHits();
 	}
