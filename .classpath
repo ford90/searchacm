@@ -38,5 +38,6 @@
 			<attribute name="owner.project.facets" value="java"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="W:/externalJARs/ACMLib.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
