@@ -110,7 +110,7 @@ public class DLSearch extends HttpServlet {
 				
 				String oldValue = filters.get(term);
 				if(oldValue != null){
-					value = value + " + " + oldValue;
+					value = "\"" + value + "\"" + ", " + "\"" + oldValue + "\"";
 				}
 				
 				filters.put(term, value);
