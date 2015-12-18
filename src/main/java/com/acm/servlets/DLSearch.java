@@ -55,20 +55,27 @@ public class DLSearch extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 /* ********* GET PARAMETERS ******* */
 		String query = request.getParameter("q");
+		
+		// Add logic for Query from Wayne's Cold Fusion Code
+		
 		int size;
 		try{
 			size = new Integer(request.getParameter("size"));
 		} catch(Exception e){
-			size = 0;
+			size = 20;
 		}
 		int from;
 		try{
-			from = new Integer(request.getParameter("offset"));
+			from = new Integer(request.getParameter("page"));
+			
 		} catch(Exception e){
-			from = 0;
+			from = 1;
 		}
 
-		String owner = request.getParameter("owner");
+		from = (from -1) * size;
+		
+//		String owner = request.getParameter("owner");
+		
 		String fullText = request.getParameter("fulltext");
 		
 		String filter = request.getParameter("filter");
@@ -86,14 +93,19 @@ public class DLSearch extends HttpServlet {
 
 		Map<String, String> filters = new HashMap<String, String>();
 
-		if(owner != null ) {
+/*
+ Add within and filter owners.owner logic
+  
+  		if(owner != null ) {
+ 
 			filters.put("owners.owner", "ACM");
 		}
 		else {
 			// Default Behavior
 			filters.put("owners.owner", "GUIDE");
 		}
-
+*/
+		
 		if( fullText != null){
 			filters.put("fulltext", "ftFormats");
 		}
@@ -110,7 +122,7 @@ public class DLSearch extends HttpServlet {
 				
 				String oldValue = filters.get(term);
 				if(oldValue != null){
-					value = "\"" + value + "\"" + ", " + "\"" + oldValue + "\"";
+					value =  value + "||" + oldValue;
 				}
 				
 				filters.put(term, value);
@@ -118,6 +130,8 @@ public class DLSearch extends HttpServlet {
 		}
 
 		BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
+		
+		
 
 		FilterBuilder[] filterArray = new FilterBuilder[filters.size()];
 
@@ -125,10 +139,21 @@ public class DLSearch extends HttpServlet {
 		for(Map.Entry<String, String> entry : filters.entrySet()){
 			String key = entry.getKey();
 			FilterBuilder fb = null;
+			
 			if(key == "fulltext"){
 				 fb = FilterBuilders.existsFilter(entry.getValue());
-			} else{
-				fb = FilterBuilders.termFilter(key, entry.getValue());
+			} else {
+				
+				String[] termValues = null;
+				
+				if (entry.getValue().contains("||")) {
+					termValues = entry.getValue().split("\\|\\|");
+				} else {
+					termValues = new String[1];
+					termValues[0] = entry.getValue();
+				}
+
+				fb = FilterBuilders.termsFilter(key, termValues);
 			}
 			filterArray[cnt] = fb;
 			cnt++;
@@ -147,8 +172,8 @@ public class DLSearch extends HttpServlet {
 		reqBuilder.setQuery(qb);
 		reqBuilder.setFetchSource(includeStr.split(","), null);
 		reqBuilder.addSort("_score", SortOrder.DESC);
-		reqBuilder.setSize(10);
-		reqBuilder.setFrom(0);		
+		reqBuilder.setSize(size);
+		reqBuilder.setFrom(from);		
 
 		    
 //		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
@@ -169,6 +194,7 @@ public class DLSearch extends HttpServlet {
 		}
 		*/
 		response.getWriter().print(reqBuilder.toString());
+//		response.getWriter().print(elasticResponse.toString());
 		response.getWriter().flush();
 		
 //		SearchHit[] hits = elasticSearchResults(query, size, from, owner, filter, fullText );

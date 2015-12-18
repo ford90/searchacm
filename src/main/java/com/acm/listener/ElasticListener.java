@@ -44,14 +44,9 @@ public class ElasticListener implements ServletContextListener {
 // 		Builder settings = ImmutableSettings.settingsBuilder()
 // 							.loadFromSource(props.getProperty("es.config"));
 
-//        String url = "acmelasticstge.acm.org";
-         
-//        String url = "http://acmelasticdev.priv.acm.org";
  		Client client = new TransportClient()
  		.addTransportAddress(new InetSocketTransportAddress(url,9300));
 
-//        Client client = NodeBuilder.nodeBuilder().client(true).node().client();
-        
  		arg0.getServletContext().setAttribute("elasticClient", client);
     }
 	
