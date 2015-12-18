@@ -103,9 +103,16 @@ public class DLSearch extends HttpServlet {
 			StringTokenizer filterTokenizer = new StringTokenizer(filter, "|");
 			while(filterTokenizer.hasMoreTokens()){
 				String filterStr = filterTokenizer.nextToken();
-				String term 	 = filter.substring(0, filterStr.indexOf(':'));
-				String value 	 = filter.substring(filterStr.indexOf("(")+1,filter.indexOf(")"));
-
+				int pos = filterStr.indexOf(':');
+				String term 	 = filterStr.substring(0, pos);
+//				String value 	 = filter.substring(filterStr.indexOf("(")+1,filter.indexOf(")"));
+				String value     = filterStr.substring(pos+1).trim();
+				
+				String oldValue = filters.get(term);
+				if(oldValue != null){
+					value = value + " + " + oldValue;
+				}
+				
 				filters.put(term, value);
 			}
 		}
@@ -140,12 +147,13 @@ public class DLSearch extends HttpServlet {
 		reqBuilder.setQuery(qb);
 		reqBuilder.setFetchSource(includeStr.split(","), null);
 		reqBuilder.addSort("_score", SortOrder.DESC);
-		reqBuilder.setSize(20);
+		reqBuilder.setSize(10);
 		reqBuilder.setFrom(0);		
 
-		/*    
-		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
+		    
+//		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
 
+		/*
 		ArrayList<String> recordID_l = new ArrayList<String>();
 
 		for( SearchHit hit : elasticResponse.getHits().getHits() ){
