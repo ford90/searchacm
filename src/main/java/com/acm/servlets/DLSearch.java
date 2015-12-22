@@ -74,13 +74,16 @@ public class DLSearch extends HttpServlet {
 
 		from = (from -1) * size;
 		
-//		String owner = request.getParameter("owner");
 		
 		String fullText = request.getParameter("fulltext");
-		
 		String filter = request.getParameter("filter");
+		String show = request.getParameter("show");
+		String dlnodes = request.getParameter("dlnodes");
 		
 /* ********************* */
+		
+		
+		String result = null;
 		
 		String includeStr = props.getProperty("includes");
 		String fieldStr = props.getProperty("fields");
@@ -92,19 +95,7 @@ public class DLSearch extends HttpServlet {
 		}
 
 		Map<String, String> filters = new HashMap<String, String>();
-
-/*
- Add within and filter owners.owner logic
-  
-  		if(owner != null ) {
- 
-			filters.put("owners.owner", "ACM");
-		}
-		else {
-			// Default Behavior
-			filters.put("owners.owner", "GUIDE");
-		}
-*/
+		
 		
 		if( fullText != null){
 			filters.put("fulltext", "ftFormats");
@@ -117,7 +108,6 @@ public class DLSearch extends HttpServlet {
 				String filterStr = filterTokenizer.nextToken();
 				int pos = filterStr.indexOf(':');
 				String term 	 = filterStr.substring(0, pos);
-//				String value 	 = filter.substring(filterStr.indexOf("(")+1,filter.indexOf(")"));
 				String value     = filterStr.substring(pos+1).trim();
 				
 				String oldValue = filters.get(term);
@@ -129,6 +119,7 @@ public class DLSearch extends HttpServlet {
 			}
 		}
 
+				
 		BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
 		
 		
@@ -158,6 +149,8 @@ public class DLSearch extends HttpServlet {
 			filterArray[cnt] = fb;
 			cnt++;
 		}
+		
+		
 		boolFilter.must(filterArray);
 
 		// Complete Query
@@ -175,26 +168,20 @@ public class DLSearch extends HttpServlet {
 		reqBuilder.setSize(size);
 		reqBuilder.setFrom(from);		
 
-		    
-//		SearchResponse elasticResponse = reqBuilder.execute().actionGet();
 
-		/*
-		ArrayList<String> recordID_l = new ArrayList<String>();
-
-		for( SearchHit hit : elasticResponse.getHits().getHits() ){
-//			Map<String,Object> source = hit.getSource();
-			recordID_l.add(hit.getId());
-			
+		
+		if (show != null) {
+//			response.getWriter().print(reqBuilder.toString());
+			result = reqBuilder.toString();
+		} else {
+			SearchResponse elasticResponse = reqBuilder.execute().actionGet();
+			//if (dlnodes != null) {
+				//getDLNodes(elasticResponse);
+			//}
+			result = elasticResponse.toString();
+//			response.getWriter().print(elasticResponse.toString());
 		}
-
-		for(String recordID : recordID_l){
-			out.write(recordID.getBytes());
-			out.write("\n".getBytes());
-			
-		}
-		*/
-		response.getWriter().print(reqBuilder.toString());
-//		response.getWriter().print(elasticResponse.toString());
+		response.getWriter().print(result);
 		response.getWriter().flush();
 		
 //		SearchHit[] hits = elasticSearchResults(query, size, from, owner, filter, fullText );
@@ -298,3 +285,5 @@ public class DLSearch extends HttpServlet {
 	
 	
 }
+
+

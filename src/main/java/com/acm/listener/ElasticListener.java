@@ -38,7 +38,7 @@ public class ElasticListener implements ServletContextListener {
      * @see ServletContextListener#contextInitialized(ServletContextEvent)
      */
     public void contextInitialized(ServletContextEvent arg0)  { 
-         System.out.println("ServletContextCreated");
+         System.out.println("ServletContextCreated - Hellloooooooo");
  		String url = "172.16.20.19";
  		
 // 		Builder settings = ImmutableSettings.settingsBuilder()
