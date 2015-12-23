@@ -1,9 +1,7 @@
 package com.acm.servlets;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
@@ -23,6 +21,7 @@ import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.QueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.index.query.QueryStringQueryBuilder;
+import org.elasticsearch.index.query.RangeFilterBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.sort.SortOrder;
 
@@ -77,8 +76,22 @@ public class DLSearch extends HttpServlet {
 		
 		String fullText = request.getParameter("fulltext");
 		String filter = request.getParameter("filter");
+		int pubYearFrom = 0;
+		int pubYearTo = 0;
+		try {
+			pubYearFrom =  new Integer(request.getParameter("pubyearfrom"));
+		} catch(Exception e) {
+			pubYearFrom = 0;
+		}
+		try {
+			pubYearTo =  new Integer(request.getParameter("pubyearto"));
+		} catch(Exception e) {
+			pubYearTo = 0;
+		}
+
 		String show = request.getParameter("show");
 		String dlnodes = request.getParameter("dlnodes");
+		
 		
 /* ********************* */
 		
@@ -119,10 +132,11 @@ public class DLSearch extends HttpServlet {
 			}
 		}
 
+		if (!filters.containsKey("owners.owner")) {
+			filters.put("owners.owner", "ACM");
+		}
 				
 		BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
-		
-		
 
 		FilterBuilder[] filterArray = new FilterBuilder[filters.size()];
 
@@ -149,9 +163,19 @@ public class DLSearch extends HttpServlet {
 			filterArray[cnt] = fb;
 			cnt++;
 		}
-		
-		
+
 		boolFilter.must(filterArray);
+		
+		if (pubYearFrom != 0 || pubYearTo != 0) {
+			RangeFilterBuilder rangeFilter = FilterBuilders.rangeFilter("publicationYear");
+			if (pubYearFrom != 0) {
+				rangeFilter.gte(pubYearFrom);		
+			}
+			if (pubYearTo != 0) {
+				rangeFilter.lte(pubYearTo);		
+			}
+			boolFilter.must(rangeFilter);
+		}
 
 		// Complete Query
 		QueryBuilder qb = QueryBuilders.filteredQuery( queryString, boolFilter);
